@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日本語・タイ語簡易翻訳（複数単語対応）</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body, html {margin:0;padding:0;height:100%;box-sizing:border-box;}
+</style>
+</head>
+<body class="w-full h-full bg-[#0f172a] flex items-center justify-center p-4">
+<div class="w-full max-w-3xl bg-[#1e293b] rounded-2xl shadow-xl border border-[#334155] p-6 flex flex-col gap-4">
+  <header class="text-center">
+    <h1 class="text-white font-semibold text-2xl">日本語 ↔ タイ語 簡易翻訳</h1>
+    <p class="text-[#cbd5f5] text-sm mt-1">翻訳方向を選んでテキストを入力してください</p>
+  </header>
+
+  <section class="flex flex-col md:flex-row gap-3 items-center">
+    <select id="direction" class="flex-1 p-2 rounded-xl bg-[#020617] text-[#e5e7eb] border border-[#334155]">
+      <option value="ja-th">日本語 → タイ語</option>
+      <option value="th-ja">タイ語 → 日本語</option>
+    </select>
+  </section>
+
+  <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="flex flex-col">
+      <label class="text-[#e5e7eb] text-xs mb-1">入力</label>
+      <textarea id="input" class="flex-1 bg-[#020617] text-[#e5e7eb] rounded-2xl p-3 resize-none h-32" placeholder="ここに入力してください"></textarea>
+      <div class="flex justify-between text-xs text-[#9ca3af] mt-1">
+        <span id="input-count">0文字</span>
+        <button id="clear" class="px-2 py-1 border border-[#475569] rounded-lg text-[#e5e7eb] hover:bg-[#1e293b]">クリア</button>
+      </div>
+    </div>
+
+    <div class="flex flex-col">
+      <label class="text-[#e5e7eb] text-xs mb-1">翻訳結果</label>
+      <textarea id="output" class="flex-1 bg-[#020617] text-[#e5e7eb] rounded-2xl p-3 resize-none h-32" readonly></textarea>
+      <div class="flex justify-end text-xs text-[#9ca3af] mt-1">
+        <button id="copy" class="px-2 py-1 rounded-lg bg-[#22c55e] text-[#020617] hover:bg-[#16a34a]">コピー</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="flex gap-3 items-center">
+    <button id="translate" class="flex-1 bg-[#22c55e] text-[#020617] font-semibold p-2 rounded-xl hover:bg-[#16a34a]">翻訳する</button>
+    <button id="swap" class="w-12 border border-[#475569] rounded-xl text-[#e5e7eb] hover:bg-[#1e293b]">⇄</button>
+  </section>
+
+  <footer class="text-center text-[11px] text-[#6b7280] mt-2">
+    日本語とタイ語の学習用にお使いください
+  </footer>
+</div>
+
+<script>
+// 日本語 → タイ語辞書
+const dictJaTh = {
+  // 挨拶・基本表現
+  "こんにちは":"สวัสดี",
+  "ありがとう":"ขอบคุณ",
+  "さようなら":"ลาก่อน",
+  "おはよう":"สวัสดีตอนเช้า",
+  "おやすみ":"ราตรีสวัสดิ์",
+  "はい":"ใช่",
+  "いいえ":"ไม่",
+  "すみません":"ขอโทษ",
+  "お願いします":"ได้โปรด",
+  "元気":"สบายดี",
+
+  // 基本名詞
+  "家":"บ้าน",
+  "学校":"โรงเรียน",
+  "友達":"เพื่อน",
+  "先生":"ครู",
+  "本":"หนังสือ",
+  "車":"รถ",
+
+  // 数字
+  "一":"หนึ่ง",
+  "二":"สอง",
+  "三":"สาม",
+  "四":"สี่",
+  "五":"ห้า",
+
+  // 色
+  "赤":"แดง",
+  "青":"น้ำเงิน",
+  "緑":"เขียว",
+  "黄色":"เหลือง",
+  "黒":"ดำ",
+  "白":"ขาว",
+  "オレンジ":"ส้ม",
+  "ピンク":"ชมพู",
+  "紫":"ม่วง",
+  "茶色":"น้ำตาล",
+  "灰色":"เทา"
+};
+
+// タイ語 → 日本語辞書
+const dictThJa = {
+  // 挨拶・基本表現
+  "สวัสดี":"こんにちは",
+  "ขอบคุณ":"ありがとう",
+  "ลาก่อน":"さようなら",
+  "สวัสดีตอนเช้า":"おはよう",
+  "ราตรีสวัสดิ์":"おやすみ",
+  "ใช่":"はい",
+  "ไม่":"いいえ",
+  "ขอโทษ":"すみません",
+  "ได้โปรด":"お願いします",
+  "สบายดี":"元気",
+
+  // 基本名詞
+  "บ้าน":"家",
+  "โรงเรียน":"学校",
+  "เพื่อน":"友達",
+  "ครู":"先生",
+  "หนังสือ":"本",
+  "รถ":"車",
+
+  // 数字
+  "หนึ่ง":"一",
+  "สอง":"二",
+  "สาม":"三",
+  "สี่":"四",
+  "ห้า":"五",
+
+  // 色
+  "แดง":"赤",
+  "น้ำเงิน":"青",
+  "เขียว":"緑",
+  "เหลือง":"黄色",
+  "ดำ":"黒",
+  "ขาว":"白",
+  "ส้ม":"オレンジ",
+  "ชมพู":"ピンク",
+  "ม่วง":"紫",
+  "น้ำตาล":"茶色",
+  "เทา":"灰色"
+};
+
+const directionSelect = document.getElementById('direction');
+const inputEl = document.getElementById('input');
+const outputEl = document.getElementById('output');
+const inputCount = document.getElementById('input-count');
+const translateBtn = document.getElementById('translate');
+const swapBtn = document.getElementById('swap');
+const clearBtn = document.getElementById('clear');
+const copyBtn = document.getElementById('copy');
+
+function updateCount() {
+  inputCount.textContent = inputEl.value.length + '文字';
+}
+
+function pseudoTranslate(text, direction) {
+  if(!text.trim()) return "";
+  const dict = direction === 'ja-th' ? dictJaTh : dictThJa;
+  // 単語ごとに分割して翻訳（辞書に無ければそのまま）
+  const words = text.split(/\s+/);
+  const translated = words.map(w => dict[w] || w);
+  return translated.join(" ") + (direction==='ja-th'?' (^^)':' (^^)');
+}
+
+function translateText() {
+  outputEl.value = pseudoTranslate(inputEl.value, directionSelect.value);
+}
+
+function swapLanguages() {
+  directionSelect.value = directionSelect.value === 'ja-th' ? 'th-ja' : 'ja-th';
+  const tmp = inputEl.value;
+  inputEl.value = outputEl.value;
+  outputEl.value = tmp;
+  updateCount();
+}
+
+inputEl.addEventListener('input', ()=>{updateCount(); translateText();});
+directionSelect.addEventListener('change', translateText);
+translateBtn.addEventListener('click', translateText);
+swapBtn.addEventListener('click', swapLanguages);
+clearBtn.addEventListener('click', ()=>{
+  inputEl.value=''; outputEl.value=''; updateCount();
+});
+copyBtn.addEventListener('click', ()=>{
+  navigator.clipboard.writeText(outputEl.value).then(()=>alert("コピーしました"));
+});
+
+updateCount();
+</script>
+</body>
+</html>
